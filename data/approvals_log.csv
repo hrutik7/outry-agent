@@ -1,3 +1,5 @@
 timestamp,deal_id,account,requested_pct,final_pct,decision,decided_by,net_tcv,margin_pct,quote_file,note
 2026-10-15T11:20:00+05:30,D-1014,Willow & Finch Retail,38,0,rejected,finance,,,,below 55% margin floor; customer declined 33% counter
 2026-10-20T16:05:00+05:30,D-1011,Summit Dental Group,5,5,auto_approved,policy,11970,68.4,,within auto cap
+2026-11-07T18:34:16+05:30,D-1002,Brightline Health,15,15,auto_approved,policy,183600,64.7,quotes/D-1002.md,
+2026-11-07T18:35:20+05:30,D-1001,Acme Corp,25,20,countered,user,288000,62.5,quotes/D-1001.md,20% + annual prepay (countered from 25%)
