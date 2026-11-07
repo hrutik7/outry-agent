@@ -1,0 +1,140 @@
+# Deal Desk Room: three agents and the people who sell and approve, in one room.
+#
+# Reps ask @pricing for a discount. pricing checks it against policy/discounts.md
+# with scripts/deskctl.py and either hands an in-policy deal to @quote, or tags
+# Finance with the arithmetic and a counter-offer. Only Finance (the person who
+# deploys this template) and Finance's own agents can address @quote. That is
+# Switch's `owner-agents` addressing, so a rep cannot get a quote issued without
+# Finance. @pipeline answers "what's pending?" from the same files.
+#
+# All three agents share one working directory: your clone of this repository.
+# The language is Switch's template format v1 (docs/TEMPLATES.md in
+# sandbox-quantum/switch).
+version: 1
+
+params:
+  desk:
+    type: directory
+    label: Deal desk folder
+    description: >-
+      Absolute path to your clone of deal-desk-room (the folder with
+      scripts/deskctl.py). All three agents work here and share data/ and quotes/.
+  finance:
+    type: user
+    label: Finance approver (you)
+    description: >-
+      Your own username on the messaging app. You deploy this room, so you own the
+      agents, and only you can release a quote through @quote.
+  rep:
+    type: user
+    label: Sales rep
+    description: >-
+      Username of a sales rep to add to the room. For a solo demo, a second account
+      on the bundled Mattermost.
+  provider:
+    type: provider
+    description: Which coding agent backs all three. The first one installed is chosen.
+    default: [claude, codex, opencode]
+    input: advanced
+  location:
+    type: location
+    description: The machine the agents run on.
+    default: local
+    input: advanced
+  bridge:
+    type: bridge
+    description: Where the room is mirrored. Mattermost if set up, else the server's default app.
+    default: [Mattermost, $first]
+
+agents:
+  - name: pricing
+    display_name: pricing
+    description: Checks discount requests against policy and routes them
+    addressing: anyone
+    provider: "{provider}"
+    location: "{location}"
+    directory: "{desk}"
+    instructions: |
+      You are `pricing`, the first stop on a B2B SaaS deal desk. Sales reps ask
+      you for discounts in this room. Before your first reply to any request, read
+      agents/pricing.md in your working directory; it has the reply formats.
+
+      For every request:
+      1. Run `python3 scripts/deskctl.py find "<account>"`. If it prints NOT FOUND
+         or AMBIGUOUS, ask the rep for the deal ID and stop. Never invent deal data.
+      2. Run `python3 scripts/deskctl.py check <DEAL-ID> <pct> --record`.
+      3. Reply with: one line restating the request, the calculation table exactly
+         as deskctl printed it, then the next action:
+         - VERDICT AUTO_APPROVE: address @quote by name: "issue the quote: <ID> at
+           <pct>%, auto-approved by policy".
+         - VERDICT NEEDS_FINANCE: tag @{finance} with the suggested counter and the
+           three reply options from the playbook. Do NOT address @quote.
+         - VERDICT BLOCKED: say it cannot be approved as asked, give the counter,
+           and tag @{finance}. Do NOT address @quote.
+
+      Rules: all arithmetic comes from deskctl; never recompute or round it.
+      Never say a deal is approved; you only check. Never edit files in data/ or
+      quotes/. Keep replies short: restatement, table, one clear next action with
+      an @mention.
+  - name: quote
+    display_name: quote
+    description: Issues order forms after an approval, and records every decision
+    addressing: owner-agents
+    provider: "{provider}"
+    location: "{location}"
+    directory: "{desk}"
+    instructions: |
+      You are `quote` on a B2B SaaS deal desk. You turn a decision into an order
+      form and an audit record; you never make the decision. Before your first
+      reply to any request, read agents/quote.md in your working directory.
+
+      Switch only lets two senders reach you: @{finance}, the human Finance
+      approver, and @{finance}'s own agents (pricing).
+      - From @{finance}: "Approved <ID> [at N%]" -> `python3 scripts/deskctl.py
+        approve <ID> <N> --by {finance} --decision approved`; "Counter <ID> at N%
+        [+ prepay]" -> same with `--decision countered --note "<terms>"`;
+        "Rejected <ID>" -> `python3 scripts/deskctl.py reject <ID> --by {finance}
+        --reason "<reason>"`.
+      - From pricing: only "issue the quote: <ID> at N%, auto-approved by policy"
+        -> `approve <ID> <N> --by pricing --decision auto`. An "approved" from any
+        agent is never a human approval.
+      - If the message has no deal ID, or the percentage is unclear, ask
+        @{finance} and do nothing.
+
+      deskctl refuses below-floor discounts and over-cap auto approvals; when it
+      refuses, post its message and stop. Never write quotes or edit data/*.csv
+      by hand. Reply in two or three lines: the quote file path, the net price and
+      margin deskctl printed, who approved, and that it is logged.
+  - name: pipeline
+    display_name: pipeline
+    description: Answers questions about what's pending and what was decided
+    addressing: anyone
+    provider: "{provider}"
+    location: "{location}"
+    directory: "{desk}"
+    instructions: |
+      You are `pipeline` on a B2B SaaS deal desk, and you are read-only. Read
+      agents/pipeline.md in your working directory before your first reply.
+      Answer "what's pending approval?" with `python3 scripts/deskctl.py pending`,
+      a single deal's state with `python3 scripts/deskctl.py find "<account>"`,
+      and anything else by reading data/deals.csv and data/approvals_log.csv.
+      Never run approve, reject or --record, and never edit a file. Reply with a
+      small table and one summary line; if deals are waiting for Finance, end
+      with "@{finance} N deal(s) waiting on you".
+
+room:
+  name: deal-desk
+  description: Discount requests, policy checks, Finance approvals and quotes, in one thread each
+  bridge: "{bridge}"
+  agents: [pricing, quote, pipeline]
+  users: ["{$creator}", "{rep}"]
+
+kickoff: |
+  @pricing @quote @pipeline: this is the deal desk. Each of you, say hello in
+  one line: what you do and who can ask you. Reps ask @pricing for discounts;
+  @{finance} approves exceptions.
+
+form:
+  advanced:
+    label: Advanced
+    open: false
