@@ -1,0 +1,16 @@
+deal_id,account,owner,segment,plan,seats,term_years,list_price,stage,status,requested_pct,discount_pct,updated_at
+D-1001,Acme Corp,Priya Nair,Mid-Market,Business,200,3,600,Negotiation,open,,0,2026-11-02
+D-1002,Brightline Health,Marcus Lee,Mid-Market,Business,120,3,600,Proposal,open,,0,2026-11-03
+D-1003,Kestrel Logistics,Sofia Alvarez,SMB,Team,60,1,360,Negotiation,open,,0,2026-11-04
+D-1004,Northgate Bank,Daniel Okafor,Enterprise,Enterprise,850,3,900,Negotiation,open,,0,2026-10-28
+D-1005,Juniper Foods,Priya Nair,Mid-Market,Business,150,2,600,Proposal,open,,0,2026-10-30
+D-1006,Juniper Foods,Priya Nair,Mid-Market,Team,40,1,360,Discovery,open,,0,2026-11-01
+D-1007,Halcyon Studios,Marcus Lee,SMB,Team,25,1,360,Proposal,open,,0,2026-11-05
+D-1008,Orbital Freight,Sofia Alvarez,Enterprise,Enterprise,520,2,900,Negotiation,pending_approval,28,0,2026-11-05
+D-1009,Pinecrest Schools,Daniel Okafor,Mid-Market,Team,300,3,360,Proposal,open,,0,2026-10-29
+D-1010,Redwood Analytics,Priya Nair,SMB,Business,80,2,600,Negotiation,open,,0,2026-11-04
+D-1011,Summit Dental Group,Marcus Lee,SMB,Team,35,1,360,Closed Won,approved,5,5,2026-10-20
+D-1012,Tidewater Energy,Sofia Alvarez,Enterprise,Enterprise,1200,3,900,Discovery,open,,0,2026-11-06
+D-1013,Vantage Robotics,Daniel Okafor,Mid-Market,Business,220,1,600,Negotiation,open,,0,2026-11-03
+D-1014,Willow & Finch Retail,Priya Nair,Mid-Market,Business,90,2,600,Closed Lost,rejected,38,0,2026-10-15
+D-1015,Zephyr Mobility,Marcus Lee,Enterprise,Enterprise,640,3,900,Proposal,open,,0,2026-11-06

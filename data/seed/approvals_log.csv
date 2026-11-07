@@ -1,0 +1,3 @@
+timestamp,deal_id,account,requested_pct,final_pct,decision,decided_by,net_tcv,margin_pct,quote_file,note
+2026-10-15T11:20:00+05:30,D-1014,Willow & Finch Retail,38,0,rejected,finance,,,,below 55% margin floor; customer declined 33% counter
+2026-10-20T16:05:00+05:30,D-1011,Summit Dental Group,5,5,auto_approved,policy,11970,68.4,,within auto cap
