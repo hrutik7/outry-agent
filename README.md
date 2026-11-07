@@ -78,7 +78,7 @@ in Mattermost, and no rule about who can talk to `quote`.
 
 | Switch concept | Where | What it does here |
 |---|---|---|
-| **Template** | [`switch/deal-desk.template.yaml`](switch/deal-desk.template.yaml) | One paste into Switch Console creates all three agents, the `deal-desk` room on Mattermost with Finance and a rep in it, and the kickoff. The deployer fills in four inputs. |
+| **Template** | [`switch/deal-desk.template.yaml`](switch/deal-desk.template.yaml) | One paste into Switch Console creates all three agents, the `deal-desk` room on Mattermost with Finance and a rep in it, and the kickoff. The deployer fills in two inputs. |
 | **Room** | `room:` block | `#deal-desk` is a real Mattermost channel. Each agent joins as its own bot account, next to the people. Every request is a thread anyone can read. |
 | **Named agents** | `agents:` (`pricing`, `quote`, `pipeline`) | Each has one job and its own brief. People and agents address them by `@name`. |
 | **Addressing (access control)** | `addressing: owner-agents` on `quote` | Only the room's owner (Finance) and Finance's own agents can wake `quote`. A rep who types `@quote Approved` is ignored by Switch, so the model never sees the message. This is the human-in-the-loop guarantee. |
@@ -150,17 +150,25 @@ Keep both windows open: the normal one is Finance and the private one is the rep
 
 ### 4. Create the room from the template
 
-1. In Switch Console, open **Templates**, then **Use** (paste a template).
-2. Paste the contents of [`switch/deal-desk.template.yaml`](switch/deal-desk.template.yaml).
-3. Fill in the form:
-   - **Deal desk folder**: the `pwd` from step 1
-   - **Finance approver (you)**: your Mattermost username
-   - **Sales rep**: `rep.priya`
+1. In Switch Console, open **Templates** and add a new template. Paste the contents of
+   [`switch/deal-desk.template.yaml`](switch/deal-desk.template.yaml), then open it
+   and select **Use**. Saving a template does not run it.
+2. Fill in the form:
+   - **Deal desk folder**: the `pwd` from step 1. Clear the field first and paste
+     only the path. The field starts out showing `{desk}`, and if you type inside
+     the braces the agents won't start ("working directory ... is not an absolute
+     path").
+   - **Finance approver (you)**: your Mattermost username, without the `@`
    - **Advanced**: the provider (Claude Code) and location (this computer) are
      pre-filled. Mattermost is the default messaging app.
-4. Select **Create**. Switch creates `pricing`, `quote` and `pipeline`, opens
-   `#deal-desk` in Mattermost with you and the rep in it, and posts the kickoff. Each
-   agent says hello.
+3. Check that the form lists `pricing`, `quote` and `pipeline` as new agents, then
+   select **Create all**. Switch creates the three agents (each becomes a Mattermost
+   bot), opens `#deal-desk` with you in it, and posts the kickoff.
+4. In Mattermost, add the rep to `#deal-desk`: open the channel's **Members**, choose
+   **Add**, then pick `rep.priya`.
+5. If the agents don't answer the kickoff, send
+   `@pricing @quote @pipeline say hello in one line each`. The first replies can take
+   up to a minute.
 
 ### 5. Run the demo
 
