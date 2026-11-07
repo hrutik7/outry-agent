@@ -2,7 +2,7 @@
 
 ### A rep can't approve their own discount. Switch makes sure of that.
 
-> 🎥 Demo video: _TODO: add link_ · Flip the Switch Hackathon, Track 01: Best Business Workflow
+> 🎥 Demo video: https://youtu.be/MaunS6FMinE?si=vxef-egABuOR6q5Q
 
 ## The problem
 
