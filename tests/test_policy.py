@@ -26,6 +26,7 @@ class DeskTest(unittest.TestCase):
             shutil.copy(REPO / "data" / "seed" / f, self.tmp / "data" / f)
         os.environ["DESK_ROOT"] = str(self.tmp)
         os.environ["DESK_NOW"] = "2026-11-07T12:00:00+05:30"
+        os.environ["DESK_BACKEND"] = "csv"
 
     def tearDown(self):
         shutil.rmtree(self.tmp)

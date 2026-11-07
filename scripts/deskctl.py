@@ -169,12 +169,35 @@ def now() -> str:
     return os.environ.get("DESK_NOW") or datetime.now(IST).isoformat(timespec="seconds")
 
 
+def _load_env() -> None:
+    """Read KEY=VALUE lines from .env at the repo root; real env vars win."""
+    env = root() / ".env"
+    if env.exists():
+        for line in env.read_text().splitlines():
+            if "=" in line and not line.lstrip().startswith("#"):
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+
+def crm():
+    """The HubSpot backend when DESK_BACKEND=hubspot, else None (CSV)."""
+    if os.environ.get("DESK_BACKEND", "csv").lower() != "hubspot":
+        return None
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import crm_hubspot
+    return crm_hubspot
+
+
 def load_deals() -> list[dict]:
+    if crm():
+        return crm().load_deals()
     with open(root() / "data" / "deals.csv", newline="") as f:
         return list(csv.DictReader(f))
 
 
 def save_deals(deals: list[dict]) -> None:
+    if crm():
+        return crm().save_deals(deals)
     path = root() / "data" / "deals.csv"
     tmp = path.with_suffix(".tmp")
     with open(tmp, "w", newline="") as f:
@@ -291,15 +314,17 @@ def approve(deal_id: str, discount: float, by: str, decision: str, note: str = "
     deal.update(status="approved", discount_pct=f"{discount:g}", requested_pct=requested,
                 updated_at=issued[:10])
     save_deals(deals)
-    append_log({"timestamp": issued, "deal_id": deal["deal_id"], "account": deal["account"],
-                "requested_pct": requested, "final_pct": f"{discount:g}",
-                "decision": "auto_approved" if decision == "auto" else decision,
-                "decided_by": "policy" if decision == "auto" else by,
-                "net_tcv": f"{ev.net_tcv:.0f}", "margin_pct": f"{ev.margin * 100:.1f}",
-                "quote_file": quote_rel, "note": note})
-    return (f"QUOTE WRITTEN: {quote_rel}\n"
-            f"{deal['deal_id']} {deal['account']}: {discount:g}% off → net {usd(ev.net_tcv)} "
-            f"({usd(ev.net_annual)}/yr), margin {ev.margin:.1%}. Status approved; logged.")
+    row = {"timestamp": issued, "deal_id": deal["deal_id"], "account": deal["account"],
+           "requested_pct": requested, "final_pct": f"{discount:g}",
+           "decision": "auto_approved" if decision == "auto" else decision,
+           "decided_by": "policy" if decision == "auto" else by,
+           "net_tcv": f"{ev.net_tcv:.0f}", "margin_pct": f"{ev.margin * 100:.1f}",
+           "quote_file": quote_rel, "note": note}
+    append_log(row)
+    out = (f"QUOTE WRITTEN: {quote_rel}\n"
+           f"{deal['deal_id']} {deal['account']}: {discount:g}% off → net {usd(ev.net_tcv)} "
+           f"({usd(ev.net_annual)}/yr), margin {ev.margin:.1%}. Status approved; logged.")
+    return out + _crm_stamp(deal, row, out)
 
 
 def reject(deal_id: str, by: str, reason: str) -> str:
@@ -312,11 +337,20 @@ def reject(deal_id: str, by: str, reason: str) -> str:
     ts = now()
     deal.update(status="rejected", updated_at=ts[:10])
     save_deals(deals)
-    append_log({"timestamp": ts, "deal_id": deal["deal_id"], "account": deal["account"],
-                "requested_pct": deal["requested_pct"], "final_pct": "0", "decision": "rejected",
-                "decided_by": by, "net_tcv": "", "margin_pct": "", "quote_file": "",
-                "note": reason})
-    return f"REJECTED: {deal['deal_id']} {deal['account']}. Status rejected; logged. No quote."
+    row = {"timestamp": ts, "deal_id": deal["deal_id"], "account": deal["account"],
+           "requested_pct": deal["requested_pct"], "final_pct": "0", "decision": "rejected",
+           "decided_by": by, "net_tcv": "", "margin_pct": "", "quote_file": "", "note": reason}
+    append_log(row)
+    out = f"REJECTED: {deal['deal_id']} {deal['account']}. Status rejected; logged. No quote."
+    return out + _crm_stamp(deal, row, f"{out}\nReason: {reason}")
+
+
+def _crm_stamp(deal: dict, row: dict, summary: str) -> str:
+    """In HubSpot mode, stamp the decision on the deal and return a line with its link."""
+    if not crm():
+        return ""
+    url = crm().record_decision(deal, row, f"{summary}\nDecided by: {row['decided_by']}")
+    return f"\nCRM: HubSpot deal updated: {url}"
 
 
 def record_request(deal_id: str, discount: float, verdict: str) -> None:
@@ -361,6 +395,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--reason", required=True)
     sub.add_parser("pending", help="list deals waiting for Finance")
     a = p.parse_args(argv)
+    _load_env()
 
     try:
         if a.cmd == "find":
@@ -390,6 +425,11 @@ def main(argv: list[str] | None = None) -> int:
     except DeskError as e:
         print(str(e))
         return 2
+    except Exception as e:  # CRM errors: report, never a traceback in chat
+        if type(e).__name__ != "CRMError":
+            raise
+        print(f"CRM ERROR: {e}. Nothing was written to HubSpot for this step; tell Finance.")
+        return 3
     return 0
 
 

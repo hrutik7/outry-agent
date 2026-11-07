@@ -42,7 +42,7 @@ flowchart LR
     subgraph Repo["Shared working dir (this repo)"]
         CLI["scripts/deskctl.py<br/>policy maths + guarded writes"]
         Pol[/"policy/discounts.md"/]
-        Deals[("data/deals.csv")]
+        Deals[("data/deals.csv<br/>or HubSpot deals")]
         Log[("data/approvals_log.csv")]
         Quotes[/"quotes/&lt;deal&gt;.md"/]
     end
@@ -61,6 +61,7 @@ flowchart LR
     CLI --> Deals
     CLI --> Log
     CLI --> Quotes
+    CLI -. "DESK_BACKEND=hubspot:<br/>amount, stage, approver, timeline note" .-> HS[("HubSpot CRM")]
 ```
 
 Three request paths, all covered by the seed data:
@@ -124,7 +125,7 @@ Switch decides **who** can approve. `deskctl` decides **what** can be approved.
 
 ```bash
 git clone <this repo> deal-desk-room && cd deal-desk-room
-python3 -m unittest discover -s tests -v     # 14 policy + record-keeping tests
+python3 -m unittest discover -s tests -v     # 18 tests: policy, records, HubSpot (faked)
 python3 scripts/check_template.py            # offline template sanity check
 ./scripts/reset_demo.sh                      # seed data; clears quotes/
 pwd                                          # you'll paste this path in step 4
@@ -174,6 +175,32 @@ Keep both windows open: the normal one is Finance and the private one is the rep
    `@pricing @quote @pipeline say hello in one line each`. The first replies can take
    up to a minute.
 
+### Optional: run it on HubSpot
+
+By default the deals come from `data/deals.csv`. Set two values in `.env` and the
+same agents, with no change to the template, work on real HubSpot deals:
+
+1. In HubSpot (a free account is fine), go to **Development → Keys → Service keys** and
+   create a key with the scopes `crm.objects.deals.read`, `crm.objects.deals.write`,
+   `crm.schemas.deals.read` and `crm.schemas.deals.write`. Legacy private apps can't
+   be created after Oct 26, 2026, so use a service key.
+2. Copy the env template and paste the key into it:
+   ```bash
+   cp .env.example .env    # then set HUBSPOT_TOKEN=... in .env
+   python3 scripts/crm_hubspot.py setup    # adds a "Deal desk" property group to deals
+   ./scripts/reset_demo.sh                 # upserts the 15 demo deals into HubSpot
+   python3 scripts/crm_hubspot.py status   # prints a link to a deal
+   ```
+
+In HubSpot mode `pricing` reads seats, term, segment and list price from the deal's
+properties. When an approval goes through, `quote` does three things:
+- sets the deal's **Amount** to the net TCV and moves it to **Contract sent**;
+- stamps **Approved by**, **Quote file** and **Last deal-desk decision** on the deal;
+- adds a **note to the deal's timeline** with the calculation.
+
+Its chat reply links straight to the deal. The policy guards are the same code, so
+a below-floor discount is refused before anything is written to HubSpot.
+
 ### 5. Run the demo
 
 Follow [`docs/demo-script.md`](docs/demo-script.md). It lists every message to type,
@@ -185,7 +212,8 @@ in order, and the reply to expect. Run `./scripts/reset_demo.sh` between takes.
 switch/deal-desk.template.yaml   Switch template: 3 agents + room + kickoff
 agents/{pricing,quote,pipeline}.md  agent playbooks (reply formats, edge cases)
 policy/discounts.md              discount policy: caps, margin floor, approvers
-scripts/deskctl.py               policy engine + the only writer of data/ and quotes/
+scripts/deskctl.py               policy engine + the only writer of deals, the log and quotes/
+scripts/crm_hubspot.py           optional HubSpot backend: setup, seed, read and write deals
 scripts/check_template.py        offline template lint
 scripts/reset_demo.sh            restore seed data between demo takes
 data/deals.csv                   15 deals (live demo state)
@@ -193,6 +221,7 @@ data/approvals_log.csv           audit log of every decision
 data/seed/                       pristine copies used by reset + tests
 quotes/                          generated order forms (git-ignored)
 tests/test_policy.py             policy maths and guardrail tests
+tests/test_hubspot.py            HubSpot flow against an in-memory fake of the API
 .claude/settings.json            lets agents run deskctl; denies direct edits to data/ and quotes/
 docs/demo-script.md              messages to type for the video
 ```
@@ -207,8 +236,10 @@ _TODO: add screenshots of_
 
 ## Limitations
 
-- **CSV instead of a CRM.** Deals live in `data/deals.csv`, and concurrent writes are
-  serialised only by the agents taking turns.
+- **The CRM link is direct, not through Switch.** Switch ships a Salesforce connection,
+  but it is disabled in this release and there is no HubSpot connection, so `deskctl`
+  calls HubSpot's REST API itself with a service key. In CSV mode, concurrent writes
+  are serialised only by the agents taking turns.
 - **One Finance approver.** That approver is the room owner, because owner-only
   addressing is how Switch lets us restrict who can address `quote`. More approvers
   would need Switch's scoped addressing rules (per-user allow lists), or one `quote`
@@ -221,8 +252,9 @@ _TODO: add screenshots of_
 
 ## Next steps
 
-- Replace the CSV with **HubSpot or Salesforce** through Switch connections: read
-  the opportunity and write the approved discount back to it.
+- Move the CRM calls onto **Switch connections** once Salesforce is enabled there, so
+  access to the CRM is granted per agent in the template (`connections:`), not by a key
+  in `.env`.
 - Use **Slack Connect** or **Teams** as the bridge, so the same room works where
   sales teams already are. Only the `bridge` param changes.
 - A **DocuSign** step after the quote, and a `legal` agent for non-standard terms in
