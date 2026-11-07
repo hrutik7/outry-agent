@@ -2,38 +2,35 @@
 
 ### A rep can't approve their own discount. Switch makes sure of that.
 
-It's the last week of the quarter. A rep messages Finance: *"Acme will sign today if
-we do 25%. Can we?"* Finance doesn't know the seat count, the term or the margin, so
-they dig through the CRM and a spreadsheet. The answer goes back in a DM, the quote is
-built from memory, and in the next audit nobody can say who approved 25%, or why.
+> 🎥 Demo video: _TODO: add link_ · Flip the Switch Hackathon, Track 01: Best Business Workflow
 
-**Deal Desk Room turns that into a team channel where three AI teammates work next to
-the rep and Finance.** They join Mattermost through
-[Switch](https://github.com/sandbox-quantum/switch), each with a name, a job, and a
-rule about who may ask them for what:
+## The problem
 
-- **`@pricing`** checks the request against written policy and posts the arithmetic:
-  list price, discount, net, margin, the auto-approve cap, and a counter-offer.
-- **Finance decides with one line.** `@quote Counter D-1001 at 20% + prepay`.
-- **`@quote`** issues the order form, updates the deal in **HubSpot** (amount, stage,
-  approver, timeline note) and writes the audit log.
+*"Acme will sign today if we do 25%. Can we?"*
 
-The approval step is **enforced, not polite**. `quote` uses Switch's `owner-agents`
-addressing, so only Finance and Finance's own agents can wake it. When a rep types
-`@quote Approved`, Switch never delivers the message, so the model never sees it.
-Separately, the policy code refuses any discount below the 55% margin floor, even
-from Finance.
+Requests like this reach Finance as a DM, with none of the numbers needed to decide.
+The approval stays in that DM, and the quote is built by someone who never saw it.
 
-> Flip the Switch Hackathon, Track 01: Best Business Workflow
->
-> 🎥 Demo video: _TODO: add link_ · 📸 Screenshots: [below](#screenshots)
+## Why it matters
 
-| Without it | With Deal Desk Room |
-|---|---|
-| Discount asks buried in DMs and email | One thread per request, visible to the room |
-| Finance redoes the maths by hand | Every number comes from tested policy code, shown step by step |
-| Whoever asks can push a quote through | Only Finance can release a quote, enforced by Switch |
-| "Who approved 25%?" Nobody knows | Approver, discount and margin are stamped on the HubSpot deal and in the log |
+- **Margin leaks.** A discount approved without its numbers can push a deal below
+  what it costs to serve.
+- **Deals stall.** At quarter end, every hour spent chasing an approval is an hour the
+  customer can walk away.
+- **No audit trail.** Nobody can say later who approved 25%, or why.
+
+## What we built
+
+Three AI teammates join the sales channel through
+[Switch](https://github.com/sandbox-quantum/switch):
+
+- **`@pricing`** checks the request against policy and shows the maths.
+- **Finance** decides with one line: `@quote Counter D-1001 at 20% + prepay`.
+- **`@quote`** issues the quote, updates the deal in **HubSpot** and logs who approved it.
+
+**Only Finance can release a quote.** Switch doesn't deliver a rep's message to
+`@quote`, and the policy code refuses anything below the margin floor, even from
+Finance.
 
 ## A request in #deal-desk
 
