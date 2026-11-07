@@ -8,7 +8,9 @@
       "Edit(./data/**)",
       "Write(./data/**)",
       "Edit(./quotes/**)",
-      "Write(./quotes/**)"
+      "Write(./quotes/**)",
+      "Read(./.env)",
+      "Bash(cat .env*)"
     ]
   }
 }
