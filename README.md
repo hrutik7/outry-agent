@@ -7,8 +7,10 @@ we do 25%. Can we?"* Finance doesn't know the seat count, the term or the margin
 they dig through the CRM and a spreadsheet. The answer goes back in a DM, the quote is
 built from memory, and in the next audit nobody can say who approved 25%, or why.
 
-**Deal Desk Room moves that whole conversation into one Mattermost channel, with
-three AI teammates connected through [Switch](https://github.com/sandbox-quantum/switch):**
+**Deal Desk Room turns that into a team channel where three AI teammates work next to
+the rep and Finance.** They join Mattermost through
+[Switch](https://github.com/sandbox-quantum/switch), each with a name, a job, and a
+rule about who may ask them for what:
 
 - **`@pricing`** checks the request against written policy and posts the arithmetic:
   list price, discount, net, margin, the auto-approve cap, and a counter-offer.
@@ -33,17 +35,45 @@ from Finance.
 | Whoever asks can push a quote through | Only Finance can release a quote, enforced by Switch |
 | "Who approved 25%?" Nobody knows | Approver, discount and margin are stamped on the HubSpot deal and in the log |
 
-**Stack:** Switch (rooms, agents, addressing) · Claude Code agents · Mattermost ·
-HubSpot CRM · Python 3, standard library only · 18 automated tests
+## A request in #deal-desk
 
-| Section | What it shows |
+The demo flow, with the agents' replies trimmed:
+
+> **rep.priya:** @pricing Acme wants 25% off a 3-year, 200-seat deal.
+>
+> **pricing** 🤖: D-1001 Acme Corp asks 25% off 3 yrs × 200 seats.
+>
+> | | Calculation |
+> |---|---|
+> | List TCV | 200 × $600 × 3 = $360,000 |
+> | Discount 25% | −$90,000 |
+> | Net TCV | $270,000 ($90,000/yr) |
+> | Gross margin | ($270,000 − $108,000) ÷ $270,000 = 60.0% |
+> | Auto cap | min(15% term + 5 pts seats, Mid-Market cap 20%) = 20% |
+>
+> ⚠️ 5 pts over the 20% auto cap; margin 60.0% is above the 55% floor. Suggested counter: 20% + annual prepay.
+> @user your call: `@quote Approved D-1001 at 25%` · `@quote Counter D-1001 at 20% + prepay` · `@quote Rejected D-1001`
+>
+> **rep.priya:** @quote Approved D-1001 at 25%
+>
+> *(no reply: Switch doesn't deliver a rep's message to `quote`)*
+>
+> **user (Finance):** @quote Counter D-1001 at 20% + prepay
+>
+> **quote** 🤖: 📄 Quote issued: quotes/D-1001.md. D-1001 Acme Corp: 20% off (countered from 25%, annual prepay) → net $288,000, margin 62.5%. Approved by user. Logged. HubSpot deal updated: <link>
+>
+> **rep.priya:** @pipeline what's pending approval?
+>
+> **pipeline** 🤖: 1 deal waiting: D-1008 Orbital Freight, 28% (cap 20%). @user 1 deal(s) waiting on you.
+
+## For judges
+
+| Criterion | Where to look |
 |---|---|
-| [How it works](#how-it-works) | Architecture, and the three request paths |
-| [Switch depth](#switch-depth) | Every Switch feature the desk depends on, and what breaks without it |
-| [Safety model](#safety-model) | Who may approve (Switch), what may be approved (code), what gets written |
-| [Verification](#verification) | What is tested automatically and what was proven against live systems |
-| [Design decisions](#design-decisions) | Shortcuts considered and rejected |
-| [Run it](#run-it) | Clone → Switch → template → demo, plus HubSpot mode |
+| **Switch is central** | [How Switch is used](#how-switch-is-used). Without Switch there is no room, no agent teammates, and no rule stopping a rep from approving their own discount. |
+| **It runs and can be reproduced** | [Run it](#run-it): clone, one template, two inputs, a reset script. 18 automated tests, plus [Verification](#verification) against live Switch and HubSpot. |
+| **A real team problem** | Deal-desk approvals: a rep, Finance and the CRM, which today are stitched together by DMs. HubSpot mode updates the real deal record. |
+| **Presentation** | Demo video (above), the conversation above, and the [Safety model](#safety-model) diagram. |
 
 ## How it works
 
@@ -94,12 +124,12 @@ Three request paths, all covered by the seed data:
 | Acme Corp, 25% off 3 yrs × 200 seats | `NEEDS_FINANCE` (5 pts over cap, margin 60%) | pricing tags Finance with the table and a counter of "20% + annual prepay". Finance replies `@quote Counter D-1001 at 20% + prepay` and the quote is issued. |
 | Kestrel Logistics, 40% off 1 yr × 60 seats | `BLOCKED` (margin 50% < 55% floor) | pricing says it cannot be approved and offers a 33% counter. Finance replies `@quote Rejected D-1003`. If someone tries to approve 40% anyway, `deskctl` refuses. |
 
-## Switch depth
+## How Switch is used
 
 The project doesn't work without Switch. Without it there is no room, no named agents
 in Mattermost, and no rule about who can talk to `quote`.
 
-| Switch feature | Where | What it does here |
+| Switch feature | Where | What it does for the team |
 |---|---|---|
 | **Template** | [`switch/deal-desk.template.yaml`](switch/deal-desk.template.yaml) | One paste into Switch Console creates all three agents, the `deal-desk` room on Mattermost with Finance in it, and the kickoff. The deployer fills in two inputs. |
 | **Room** | `room:` block | `#deal-desk` is a real Mattermost channel. Each agent joins as its own bot account, next to the people. Every request is a thread anyone can read. |
