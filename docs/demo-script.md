@@ -1,8 +1,9 @@
 # Demo script (about 3 minutes)
 
 Two browser windows, side by side:
-- **Finance**: your normal window, signed in to Mattermost as the account you linked
-  in Switch Console.
+- **Finance**: your normal window, signed in to Mattermost as the account Switch
+  linked to you (`user` on the bundled Mattermost). Keep a second tab open on the Acme
+  deal in HubSpot.
 - **Rep**: a private window, signed in as `rep.priya`.
 
 Plus one terminal in the repo folder. Wait for each agent's reply before sending the
@@ -72,8 +73,15 @@ it. Wait about 10 seconds on camera either way.
 ```
 
 **Expect:** `📄 Quote issued: quotes/D-1001.md` with D-1001 Acme Corp at 20% off,
-countered from 25%, net $288,000 ($96,000/yr), margin 62.5%, and the line
-"approved by <you>".
+countered from 25%, net $288,000 ($96,000/yr), margin 62.5%, the line
+"approved by <you>", and a **HubSpot link**.
+
+Switch to the HubSpot tab and refresh the Acme deal. It should show **Amount
+$288,000**, stage **Contract sent**, **Approved by** filled in, and a **Deal desk note**
+on the timeline with the calculation.
+
+> "The approval didn't stay in chat. The CRM now shows the approved price, the
+> stage, who approved it, and why."
 
 ## Scene 5: below the margin floor (Rep, then Finance)
 
@@ -129,6 +137,9 @@ git diff --stat data/
 > with who approved it. All of it came from one Mattermost thread."
 
 ## Close (about 10 s)
+
+(In HubSpot mode, skip `git diff`. The HubSpot deal from scene 4 is the audit trail.)
+
 
 > "One template creates the agents, the room and the rules. Switch is the access
 > control that makes the human approval real."

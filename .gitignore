@@ -3,3 +3,5 @@ __pycache__/
 data/*.tmp
 quotes/*.md
 .env
+.claude
+
