@@ -74,6 +74,10 @@ The demo flow, with the agents' replies trimmed:
 
 ## How it works
 
+![How a discount request flows through Deal Desk Room](docs/flow.png)
+
+<details><summary>Same flow as a Mermaid diagram</summary>
+
 ```mermaid
 flowchart LR
     subgraph Mattermost["Mattermost · #deal-desk"]
@@ -112,6 +116,8 @@ flowchart LR
     CLI --> Quotes
     CLI -. "DESK_BACKEND=hubspot:<br/>amount, stage, approver, timeline note" .-> HS[("HubSpot CRM")]
 ```
+
+</details>
 
 Three request paths, all covered by the seed data:
 
