@@ -1,156 +1,174 @@
-# Demo script (about 3 minutes)
+# Demo script (2:45)
 
-Two browser windows, side by side:
-- **Finance**: your normal window, signed in to Mattermost as the account Switch
-  linked to you (`user` on the bundled Mattermost). Keep a second tab open on the Acme
-  deal in HubSpot.
-- **Rep**: a private window, signed in as `rep.priya`.
+Three moments the video is built around:
+1. **The rep tries to approve their own discount, and nothing happens.** (Switch)
+2. **Finance types one line, and the HubSpot deal changes.** (real business system)
+3. **Finance tries to approve a loss-making discount, and the code refuses.** (guardrails)
 
-Plus one terminal in the repo folder. Wait for each agent's reply before sending the
-next message. Agents can take 10–40 seconds, so cut the waits in editing.
+Everything else sets these up.
 
-## Before recording
+## Screen layout (1920×1080)
 
-```bash
-./scripts/reset_demo.sh
+```
+┌───────────────────────────────┬───────────────────────────────┐
+│ LEFT: Finance (user)          │ RIGHT: Rep (rep.priya)        │
+│ normal browser window         │ private window                │
+│ tab 1: #deal-desk             │ #deal-desk                    │
+│ tab 2: HubSpot Acme deal      │                               │
+│ tab 3: HubSpot Brightline     │                               │
+└───────────────────────────────┴───────────────────────────────┘
+ also open but hidden: Switch Console, a terminal in the repo,
+ switch/deal-desk.template.yaml in an editor (line: addressing: owner-agents)
 ```
 
-Open `#deal-desk` in both windows. The kickoff and the three hellos should be
-visible. If an earlier take left threads behind, start a new room or scroll so the
-screen is clean.
+- Browser zoom 90%, so pricing's table fits without scrolling.
+- Mattermost: hide the left sidebar if you can, so the channel has room.
+- Turn off notifications. Close every unrelated tab.
+
+## Before every take
+
+```bash
+cd /home/hritik/Desktop/outry-agent/deal-desk-room && ./scripts/reset_demo.sh
+```
+
+Refresh both HubSpot tabs: Acme shows **$360,000**, stage **Decision maker bought in**.
+Scroll the channel so it's empty or clean. Put the first message in the rep's message
+box, ready to send.
+
+**OBS rule:** press **Pause** after every send, and **Resume** when the agent's reply
+lands. The video never shows waiting.
 
 ---
 
-## Scene 0: the problem (narration, about 15 s)
+## 0:00 Hook (camera on the channel, nothing typed)
 
-> "Discount approvals live in DMs. Finance re-does the maths, and nobody can say
-> later who approved what. This is the same flow in one Switch room: three named
-> agents, a rep, and Finance."
+> "Every SaaS deal desk has this message: *'Acme will sign today if we do 25%. Can we?'*
+> It lands in a DM, Finance doesn't have the numbers, and nobody records who said yes.
+> We moved it into one channel with three AI teammates, and made sure a rep can't
+> approve their own discount."
 
-Point at the channel's member list: `pricing`, `quote` and `pipeline` are bot members
-next to the people.
+## 0:12 The team (show the member list, then 3 s of Switch Console's Agents page)
 
-## Scene 1: in policy, no human needed (Rep)
+> "Two people: a rep and Finance. Three agents: pricing, quote and pipeline. All of
+> them are Switch agents, created from one template and joined to Mattermost as
+> teammates."
+
+## 0:22 Easy path: agents hand off to each other (RIGHT, rep)
 
 ```
 @pricing Brightline Health wants 15% off their 3-year, 120-seat deal.
 ```
 
-**Expect:** pricing restates the request, posts the table (net $183,600, margin
-64.7%, auto cap 20%) and says `AUTO_APPROVE`. It then addresses `@quote`, which
-replies `📄 Quote issued: quotes/D-1002.md`, auto-approved by policy.
+Pause, then resume when quote answers.
 
-> "Inside the policy, the agents handle it on their own: pricing hands off to quote
-> by name."
+> "Inside the policy, no human needed. pricing checks it and hands it to quote by name,
+> and the quote is issued."
 
-## Scene 2: out of policy, escalate to Finance (Rep)
+Optional, 2 s: flick to the Brightline HubSpot tab and refresh, to show contract sent.
+
+## 0:45 Real path: an exception (RIGHT, rep)
 
 ```
 @pricing Acme wants 25% off a 3-year, 200-seat deal.
 ```
 
-**Expect:** the table (list $360,000 → net $270,000, margin 60.0%) and
-`⚠️ 5 pts over the 20% auto cap`, a suggested counter of
-`20% + annual prepay upfront`, then `@<finance>` with three reply options.
+Pause, then resume when the table lands. Hover the cursor over the table.
 
-## Scene 3: the rep can't approve their own deal (Rep)
+> "Here's the maths Finance never had: list, discount, net, margin. It's 5 points over
+> what policy allows automatically, still above the margin floor, so pricing doesn't
+> decide. It tags Finance, with a counter-offer ready."
+
+## 1:10 ⭐ WOW 1: the rep tries to approve it themselves (RIGHT, rep)
 
 ```
 @quote Approved D-1001 at 25%
 ```
 
-**Expect:** **no reply from quote.** Switch may post a notice that you can't address
-it. Wait about 10 seconds on camera either way.
+**Don't pause.** Let 5 seconds of silence play on camera.
 
-> "quote only accepts messages from Finance and Finance's own agents. That rule is
-> Switch's `owner-agents` addressing, so it never reaches the model. The human
-> approval isn't just a prompt instruction."
+> "The rep tries to approve their own discount… and nothing. quote never hears it."
 
-## Scene 4: Finance counters (Finance)
+Cut to the template in the editor, with `addressing: owner-agents` highlighted (3 s).
+
+> "That's not a prompt saying 'please only listen to Finance'. It's Switch addressing:
+> quote only accepts messages from its owner, Finance, and Finance's own agents.
+> The message is never delivered, so there's nothing to talk the model into."
+
+## 1:30 ⭐ WOW 2: Finance decides in one line, and the CRM updates (LEFT, Finance)
 
 ```
 @quote Counter D-1001 at 20% + prepay
 ```
 
-**Expect:** `📄 Quote issued: quotes/D-1001.md` with D-1001 Acme Corp at 20% off,
-countered from 25%, net $288,000 ($96,000/yr), margin 62.5%, the line
-"approved by <you>", and a **HubSpot link**.
+Pause, then resume when "Quote issued" lands.
 
-Switch to the HubSpot tab and refresh the Acme deal. It should show **Amount
-$288,000**, stage **Contract sent**, **Approved by** filled in, and a **Deal desk note**
-on the timeline with the calculation.
+> "Finance counters with one line. The quote is issued at 20% with prepay, at a 62.5%
+> margin…"
 
-> "The approval didn't stay in chat. The CRM now shows the approved price, the
-> stage, who approved it, and why."
+Switch to the HubSpot Acme tab and **refresh on camera**. Point at Amount $288,000,
+stage Contract sent, Approved by, and the Deal desk note on the timeline.
 
-## Scene 5: below the margin floor (Rep, then Finance)
+> "…and the real deal record in HubSpot already has the approved price, the stage,
+> who approved it, and the full calculation. The approval didn't stay in chat."
+
+## 2:00 ⭐ WOW 3: even Finance can't break the floor (RIGHT, then LEFT)
 
 Rep:
 ```
 @pricing Kestrel Logistics needs 40% off the 1-year, 60-seat deal or they walk.
 ```
 
-**Expect:** margin 50.0%, so `⛔ Below the 55% margin floor`, with a counter of 33%
-(needs Finance) or 5% + prepay.
+Pause, then resume. pricing says BLOCKED: margin 50%, below the 55% floor.
 
-Finance, to show that even Finance can't go below the floor:
+Finance:
 ```
 @quote Approved D-1003 at 40%
 ```
 
-**Expect:** `REFUSED: 40% puts margin at 50.0%, below the 55% floor ... The most
-Finance can approve is 33%.`
+Pause, then resume. quote posts **REFUSED: … below the 55% floor … the most Finance can approve is 33%.**
 
-Finance:
-```
-@quote Rejected D-1003, below margin floor; rep to offer 33% with prepay
-```
+> "Even Finance can't approve a deal that loses money. The maths lives in tested code,
+> not in the model, so it says no every time."
 
-**Expect:** `❌ D-1003 rejected ... Logged. No quote issued.`
-
-## Scene 6: no made-up data (Rep, optional, about 10 s)
-
-```
-@pricing Wayne Industries wants 10% off.
-```
-
-**Expect:** pricing says the account isn't on the deal desk and asks for the deal ID.
-
-## Scene 7: what's waiting? (Rep)
+## 2:25 Anyone can see the state (RIGHT, rep)
 
 ```
 @pipeline what's pending approval?
 ```
 
-**Expect:** a table with **D-1008 Orbital Freight** (28%, from the seed data), then
-`@<finance> 1 deal(s) waiting on you`.
+Pause, then resume.
 
-## Scene 8: the audit trail (terminal, about 20 s)
+> "And anyone can ask what's waiting, without pinging Finance."
 
-```bash
-cat quotes/D-1001.md
-column -s, -t data/approvals_log.csv
-git diff --stat data/
-```
+## 2:35 Close (back on the full channel)
 
-> "Every decision is written down: the order form, the deal record and the audit log,
-> with who approved it. All of it came from one Mattermost thread."
+> "One Switch template. Three AI teammates. Every number shown, every approval
+> enforced, and every decision written to the CRM. That's Deal Desk Room."
 
-## Close (about 10 s)
-
-(In HubSpot mode, skip `git diff`. The HubSpot deal from scene 4 is the audit trail.)
-
-
-> "One template creates the agents, the room and the rules. Switch is the access
-> control that makes the human approval real."
+End card (3 s): repo URL, "Built on Switch".
 
 ---
 
-### If something goes wrong
+## Tips
+
+- **Do one full practice run before recording.** Agents can word things differently
+  between runs, so know what to expect.
+- **Record each "wow" as its own clip** if a take goes wrong. Reset between clips with
+  `reset_demo.sh`. Brightline, Acme and Kestrel don't depend on each other.
+- **Read the narration from a second screen or your phone.** Aim for natural, not
+  memorised.
+- **Mic close, room quiet.** Audio quality matters more to viewers than video quality.
+- **Don't show:** setup, Switch Console forms, the terminal (unless asked), or waiting
+  time.
+- **If an agent says something unexpected,** keep going if it's still correct. Judges
+  like to see that it's real.
+
+## If something goes wrong
 
 | Symptom | Fix |
 |---|---|
 | No agent replies at all | Switch Console must stay open. Check the agents are running under Agents. |
-| `quote` ignores Finance too | In Messaging apps, use **Link my account…** and choose **This is me** for your Mattermost user. |
-| An agent asks for permission to run `python3` | Approve it in the chat once. Or set `auto_approve: true` on that agent in the template; it skips every permission check, so use it for the demo only. |
-| The numbers differ from this script | Run `./scripts/reset_demo.sh`. An earlier take changed the data. |
+| `quote` ignores Finance | Finance must be the Mattermost account Switch linked to you (`user`). |
+| `quote` replies to the rep in WOW 1 | Stop and tell the developer: the addressing isn't enforced in this setup. |
+| An agent asks for permission to run `python3` | Approve it once, then reset and retake. |
+| The numbers or HubSpot values look wrong | Run `./scripts/reset_demo.sh` and refresh HubSpot. An earlier take changed the data. |
