@@ -33,6 +33,18 @@ from Finance.
 | Whoever asks can push a quote through | Only Finance can release a quote, enforced by Switch |
 | "Who approved 25%?" Nobody knows | Approver, discount and margin are stamped on the HubSpot deal and in the log |
 
+**Stack:** Switch (rooms, agents, addressing) · Claude Code agents · Mattermost ·
+HubSpot CRM · Python 3, standard library only · 18 automated tests
+
+| Section | What it shows |
+|---|---|
+| [How it works](#how-it-works) | Architecture, and the three request paths |
+| [Switch depth](#switch-depth) | Every Switch feature the desk depends on, and what breaks without it |
+| [Safety model](#safety-model) | Who may approve (Switch), what may be approved (code), what gets written |
+| [Verification](#verification) | What is tested automatically and what was proven against live systems |
+| [Design decisions](#design-decisions) | Shortcuts considered and rejected |
+| [Run it](#run-it) | Clone → Switch → template → demo, plus HubSpot mode |
+
 ## How it works
 
 ```mermaid
@@ -82,12 +94,12 @@ Three request paths, all covered by the seed data:
 | Acme Corp, 25% off 3 yrs × 200 seats | `NEEDS_FINANCE` (5 pts over cap, margin 60%) | pricing tags Finance with the table and a counter of "20% + annual prepay". Finance replies `@quote Counter D-1001 at 20% + prepay` and the quote is issued. |
 | Kestrel Logistics, 40% off 1 yr × 60 seats | `BLOCKED` (margin 50% < 55% floor) | pricing says it cannot be approved and offers a 33% counter. Finance replies `@quote Rejected D-1003`. If someone tries to approve 40% anyway, `deskctl` refuses. |
 
-## How Switch is used
+## Switch depth
 
 The project doesn't work without Switch. Without it there is no room, no named agents
 in Mattermost, and no rule about who can talk to `quote`.
 
-| Switch concept | Where | What it does here |
+| Switch feature | Where | What it does here |
 |---|---|---|
 | **Template** | [`switch/deal-desk.template.yaml`](switch/deal-desk.template.yaml) | One paste into Switch Console creates all three agents, the `deal-desk` room on Mattermost with Finance in it, and the kickoff. The deployer fills in two inputs. |
 | **Room** | `room:` block | `#deal-desk` is a real Mattermost channel. Each agent joins as its own bot account, next to the people. Every request is a thread anyone can read. |
@@ -97,20 +109,69 @@ in Mattermost, and no rule about who can talk to `quote`.
 | **Agent-to-agent handoff** | pricing → `@quote` | For in-policy deals pricing addresses `quote` by name, and Switch delivers it because pricing belongs to the owner. |
 | **Human in the loop** | pricing → `@finance` → `@quote` | Out-of-policy deals wait for a human. Finance's one-line reply is the trigger, and the approver's name goes into the quote and the audit log. |
 | **Shared working directory** | `directory: "{desk}"` on all three | The agents read and write the same files, so the pricing check, the approval and the pipeline view always agree. |
+| **Template params and form** | `params:` (`directory`, `string` with a `pattern`, `provider`, `location`, `bridge` with a fallback chain) | The Console builds the setup form from the template: two visible inputs, everything else folded under Advanced. |
+| **Managed agents** | `provider: "{provider}"`, `location: "{location}"` | Switch's controller runs each agent as its own Claude Code session on the deployer's machine, under its own identity. |
+| **Mattermost bot identities** | the Mattermost bridge | Each agent is a real channel member with its own bot account, so `@pricing` autocompletes like a colleague. |
+| **Account linking** | `{$creator}` in `users:` | Switch maps the deployer to their Mattermost account. This is what makes "owner" mean Finance in that channel. |
+| **Kickoff** | `kickoff:` | Wakes all three agents once the room exists, so each introduces itself and the room is ready before the first request. |
+| **Provider auto mode** | the default `auto_mode: true` | Safe actions, such as running `deskctl`, go ahead without asking. Risky ones would still ask a person. |
 
-### Why decisions are checked by code as well
+## Safety model
 
-The agents never do arithmetic or edit records themselves. They call
-[`scripts/deskctl.py`](scripts/deskctl.py), which:
+```
+ WHO MAY ASK            WHO MAY APPROVE               WHAT MAY BE APPROVED          WHAT GETS WRITTEN
+ (Switch addressing)    (Switch addressing)           (deskctl policy code)         (deskctl, one path)
 
-- prints the calculation table that `pricing` posts, so Finance can check each step;
-- refuses `--decision auto` above the auto cap, and refuses **any** approval below the
-  55% margin floor;
-- writes the quote, updates `data/deals.csv` and appends `data/approvals_log.csv` in one
-  step;
-- is covered by `tests/test_policy.py` for all three demo scenarios and the edge cases.
+ anyone in room ──▶ @pricing ──▶ AUTO_APPROVE ──────▶ ≤ auto cap? ──────────┐
+                         │                                                  │
+                         └──▶ NEEDS_FINANCE ──▶ @finance ──▶ @quote ──▶ margin ≥ 55%? ──▶ quote file
+                                                (owner only)               │             deal record / HubSpot
+ rep ──▶ @quote  ✋ not delivered by Switch                                ✗ REFUSED     approvals log
+                                                                                         HubSpot timeline note
+```
+
+**Key constraints**
+
+- **Only Finance can release an exception.** `quote` has `addressing: owner-agents`, so
+  Switch does not deliver a rep's message to it.
+- **The agents never do arithmetic.** Every number in chat is printed by
+  `scripts/deskctl.py` and pasted as is.
+- **`approve --decision auto` is refused above the auto cap**, so an agent cannot
+  call an exception "policy".
+- **Any discount below the 55% margin floor is refused**, even with Finance's
+  approval. Nothing is written to the quote, the deal or HubSpot.
+- **Decided deals stay decided.** An approved or rejected deal cannot be quoted
+  again without a new request.
+- **One writer.** `.claude/settings.json` denies the agents direct edits to `data/`
+  and `quotes/`, and stops them reading `.env`, where the HubSpot key lives.
+- **Errors are reported, not hidden.** If HubSpot fails, `deskctl` prints `CRM ERROR`
+  and the agent reports it to the room. It never claims success.
 
 Switch decides **who** can approve. `deskctl` decides **what** can be approved.
+
+## Verification
+
+| What | How | Result |
+|---|---|---|
+| Policy maths for the three demo paths, plus the boundaries (20 / 33 / 34%) | `tests/test_policy.py` | ✅ automated |
+| Guards: no auto approval over the cap, nothing below the floor, decided deals locked, unknown deals refused | `tests/test_policy.py` | ✅ automated |
+| HubSpot mapping: seed is idempotent, a counter updates amount, stage, approver and note, guards hold in CRM mode, CRM outage reported | `tests/test_hubspot.py`, against an in-memory fake of the HubSpot API | ✅ automated |
+| Template shape: placeholders, params, agents, room, kickoff | `scripts/check_template.py`, then Switch Console's own validation on import | ✅ |
+| Real Switch run: template → 3 managed agents → Mattermost room → kickoff replies | Switch Console 0.40.1, local server, bundled Mattermost | ✅ |
+| Real HubSpot run: properties created, 15 deals seeded, an approval set amount and stage and added a timeline note | `scripts/crm_hubspot.py setup / seed`, `deskctl approve` | ✅ |
+
+Run the automated part with `python3 -m unittest discover -s tests -v`.
+
+## Design decisions
+
+| Decision | Rejected alternative | Why |
+|---|---|---|
+| Approval enforced by **Switch addressing** | "Only approve if Finance says so" in the prompt | A prompt can be argued with. A message Switch never delivers can't be. |
+| **All maths in code**, with agents pasting the output | Letting the model compute discounts | Finance has to trust the numbers, and they must be the same every time. |
+| **One CLI** as the only writer of deals, the log and quotes | Agents editing CSVs and writing quotes freely | One place to put the guards, one place to test them. |
+| **HubSpot behind a backend flag**; CSV stays the default | HubSpot required | Judges and reviewers can run the repo without a CRM account. |
+| **Deal IDs in approval messages** (`Approved D-1001`) | Relying on the agent to read back up the thread | Explicit is safer than inferred when money is involved. |
+| **Separate agents** for pricing and quoting | One agent that checks and issues quotes | Different addressing rules for asking and approving need different agents. |
 
 ## Run it
 
@@ -243,6 +304,17 @@ _TODO: add screenshots of_
 2. _Finance's one-line approval and the quote that comes back_
 3. _a rep's `@quote` message getting no response_
 4. _`quotes/D-1001.md` and `data/approvals_log.csv` after the demo_
+
+## Lessons from running it on Switch
+
+- **Saving a template doesn't run it.** Open the saved template and select **Use**.
+- **The directory field shows `{desk}`.** Typing inside the braces gives agents a
+  non-absolute directory, and they fail with `definition_invalid`. Clear the field first.
+- **"Owner" means the Mattermost account Switch linked to you.** On the bundled
+  Mattermost that is usually `user`. Make that account Finance, or owner-only
+  addressing will ignore your approvals.
+- **User-picker params** need a working Mattermost lookup. A plain `string` param
+  was more robust for a local demo.
 
 ## Limitations
 
