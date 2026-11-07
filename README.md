@@ -1,27 +1,37 @@
 # Deal Desk Room
 
-**A sales deal desk in one chat room: a rep asks for a discount, Switch agents check
-it against policy, Finance approves exceptions in the same thread, and a quote is
-issued only after approval.**
+### A rep can't approve their own discount. Switch makes sure of that.
+
+It's the last week of the quarter. A rep messages Finance: *"Acme will sign today if
+we do 25%. Can we?"* Finance doesn't know the seat count, the term or the margin, so
+they dig through the CRM and a spreadsheet. The answer goes back in a DM, the quote is
+built from memory, and in the next audit nobody can say who approved 25%, or why.
+
+**Deal Desk Room moves that whole conversation into one Mattermost channel, with
+three AI teammates connected through [Switch](https://github.com/sandbox-quantum/switch):**
+
+- **`@pricing`** checks the request against written policy and posts the arithmetic:
+  list price, discount, net, margin, the auto-approve cap, and a counter-offer.
+- **Finance decides with one line.** `@quote Counter D-1001 at 20% + prepay`.
+- **`@quote`** issues the order form, updates the deal in **HubSpot** (amount, stage,
+  approver, timeline note) and writes the audit log.
+
+The approval step is **enforced, not polite**. `quote` uses Switch's `owner-agents`
+addressing, so only Finance and Finance's own agents can wake it. When a rep types
+`@quote Approved`, Switch never delivers the message, so the model never sees it.
+Separately, the policy code refuses any discount below the 55% margin floor, even
+from Finance.
 
 > Flip the Switch Hackathon, Track 01: Best Business Workflow
 >
 > 🎥 Demo video: _TODO: add link_ · 📸 Screenshots: [below](#screenshots)
 
-## The problem
-
-Deal-desk approvals get stuck in DMs and email. A rep pings Finance with "can we do
-25% for Acme?" and Finance has to dig up the seat count, the term and the margin. The
-answer goes back by DM. Whoever builds the quote never sees the conversation, and six
-months later nobody can tell who approved what, or why. Every step is a hand-off
-between people who don't share context.
-
-**Deal Desk Room puts the whole loop in one shared channel.** The rep asks a named
-agent. The agent prices the request against written policy and shows its arithmetic.
-Finance sees the exact numbers and decides with one reply. A second agent issues the
-order form and writes the audit record. Anyone in the room can follow every step, and
-Switch's addressing rules make the approval step **enforced, not polite**: reps
-cannot get a quote out of the `quote` agent at all.
+| Without it | With Deal Desk Room |
+|---|---|
+| Discount asks buried in DMs and email | One thread per request, visible to the room |
+| Finance redoes the maths by hand | Every number comes from tested policy code, shown step by step |
+| Whoever asks can push a quote through | Only Finance can release a quote, enforced by Switch |
+| "Who approved 25%?" Nobody knows | Approver, discount and margin are stamped on the HubSpot deal and in the log |
 
 ## How it works
 
