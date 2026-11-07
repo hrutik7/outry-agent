@@ -158,7 +158,11 @@ Keep both windows open: the normal one is Finance and the private one is the rep
      only the path. The field starts out showing `{desk}`, and if you type inside
      the braces the agents won't start ("working directory ... is not an absolute
      path").
-   - **Finance approver (you)**: your Mattermost username, without the `@`
+   - **Finance approver (you)**: the Mattermost account Switch has **linked to you**,
+     without the `@`. With the bundled Mattermost this is usually `user`, the account
+     from **Sign-in details…**. Check with the room's member list after creation: the
+     template's `{$creator}` is that account. If the two differ, `quote` ignores
+     the approver the agents tag.
    - **Advanced**: the provider (Claude Code) and location (this computer) are
      pre-filled. Mattermost is the default messaging app.
 3. Check that the form lists `pricing`, `quote` and `pipeline` as new agents, then
